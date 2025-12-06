@@ -118,17 +118,23 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   // Customer Info (left side)
   y = height - 200;
   drawText(invoice.customer.name, margin, y);
-  drawText(invoice.customer.address, margin, y - 14);
+  
+  // Split address by newlines to support multi-line addresses (street on one line, postal code + city on next)
+  const addressLines = invoice.customer.address.split('\n');
+  addressLines.forEach((line, i) => {
+    drawText(line, margin, y - 14 - (i * 14));
+  });
   
   const additionalInfoCount = invoice.customer.additionalInfo?.length ?? 0;
+  const addressLineCount = addressLines.length;
   if (additionalInfoCount > 0) {
     invoice.customer.additionalInfo!.forEach((info, i) => {
-      drawText(info, margin, y - 28 - (i * 14), { color: gray });
+      drawText(info, margin, y - 14 - (addressLineCount * 14) - (i * 14), { color: gray });
     });
   }
 
-  // Invoice Title - adjust position based on additionalInfo lines
-  const customerSectionHeight = 28 + (additionalInfoCount * 14) + 20;
+  // Invoice Title - adjust position based on address lines and additionalInfo lines
+  const customerSectionHeight = 14 + (addressLineCount * 14) + (additionalInfoCount * 14) + 20;
   y -= customerSectionHeight;
   drawText("RECHNUNG", margin, y, { font: helveticaBold, size: 24 });
 
