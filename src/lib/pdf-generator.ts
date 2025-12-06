@@ -113,14 +113,17 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   y = height - 200;
   drawText(invoice.customer.name, margin, y);
   drawText(invoice.customer.address, margin, y - 14);
-  if (invoice.customer.additionalInfo?.length) {
-    invoice.customer.additionalInfo.forEach((info, i) => {
+  
+  const additionalInfoCount = invoice.customer.additionalInfo?.length ?? 0;
+  if (additionalInfoCount > 0) {
+    invoice.customer.additionalInfo!.forEach((info, i) => {
       drawText(info, margin, y - 28 - (i * 14), { color: gray });
     });
   }
 
-  // Invoice Title
-  y -= 80;
+  // Invoice Title - adjust position based on additionalInfo lines
+  const customerSectionHeight = 28 + (additionalInfoCount * 14) + 20;
+  y -= customerSectionHeight;
   drawText("RECHNUNG", margin, y, { font: helveticaBold, size: 24 });
 
   // Invoice Details
