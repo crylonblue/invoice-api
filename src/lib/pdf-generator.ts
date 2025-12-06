@@ -149,7 +149,7 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   }
 
   // Invoice Title - adjust position based on customer info lines
-  const customerSectionHeight = customerLineOffset + (additionalInfoCount * 14) + 6;
+  const customerSectionHeight = customerLineOffset + (additionalInfoCount * 14) + 30;
   y -= customerSectionHeight;
   drawText("RECHNUNG", margin, y, { font: helveticaBold, size: 24 });
 
