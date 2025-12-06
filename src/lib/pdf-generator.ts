@@ -1,0 +1,250 @@
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import type { Invoice, InvoiceItem } from "./schema";
+
+async function fetchImageAsBytes(url: string): Promise<{ bytes: Uint8Array; type: "png" | "jpg" } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const contentType = response.headers.get("content-type") || "";
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    
+    // Determine image type from content-type or URL
+    if (contentType.includes("png") || url.toLowerCase().endsWith(".png")) {
+      return { bytes, type: "png" };
+    }
+    if (contentType.includes("jpeg") || contentType.includes("jpg") || 
+        url.toLowerCase().endsWith(".jpg") || url.toLowerCase().endsWith(".jpeg")) {
+      return { bytes, type: "jpg" };
+    }
+    
+    // Try to detect from magic bytes
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) return { bytes, type: "png" };
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8) return { bytes, type: "jpg" };
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function formatDate(dateString: string): string {
+  const [year, month, day] = dateString.split("-");
+  return `${day}.${month}.${year}`;
+}
+
+function formatCurrency(amount: number): string {
+  return amount.toLocaleString("de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }) + " €";
+}
+
+function calculateItemTotal(item: InvoiceItem): number {
+  return item.quantity * item.unitPrice;
+}
+
+export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
+  
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  
+  const { width, height } = page.getSize();
+  const margin = 50;
+  const black = rgb(0, 0, 0);
+  const gray = rgb(0.4, 0.4, 0.4);
+  
+  let y = height - margin;
+  
+  // Logo (if provided)
+  if (invoice.logoUrl) {
+    const imageData = await fetchImageAsBytes(invoice.logoUrl);
+    if (imageData) {
+      const image = imageData.type === "png" 
+        ? await pdfDoc.embedPng(imageData.bytes)
+        : await pdfDoc.embedJpg(imageData.bytes);
+      
+      // Scale logo to max 120px width or 60px height
+      const maxWidth = 120;
+      const maxHeight = 60;
+      const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+      const scaledWidth = image.width * scale;
+      const scaledHeight = image.height * scale;
+      
+      page.drawImage(image, {
+        x: margin,
+        y: height - margin - scaledHeight,
+        width: scaledWidth,
+        height: scaledHeight,
+      });
+      
+      y = height - margin - scaledHeight - 20;
+    }
+  }
+
+  // Helper function to draw text
+  const drawText = (text: string, x: number, yPos: number, options?: { font?: typeof helvetica; size?: number; color?: typeof black }) => {
+    page.drawText(text, {
+      x,
+      y: yPos,
+      font: options?.font ?? helvetica,
+      size: options?.size ?? 10,
+      color: options?.color ?? black,
+    });
+  };
+
+  // Seller Info (top right) - always at fixed position from top
+  const sellerY = height - margin;
+  const sellerLines = [
+    invoice.seller.name,
+    invoice.seller.address,
+    invoice.seller.taxNumber ? `Steuernummer: ${invoice.seller.taxNumber}` : null,
+    invoice.seller.vatId ? `USt-IdNr.: ${invoice.seller.vatId}` : null,
+  ].filter(Boolean) as string[];
+
+  sellerLines.forEach((line, i) => {
+    const textWidth = helvetica.widthOfTextAtSize(line, 10);
+    drawText(line, width - margin - textWidth, sellerY - (i * 14));
+  });
+
+  // Customer Info (left side)
+  y = height - 200;
+  drawText(invoice.customer.name, margin, y);
+  drawText(invoice.customer.address, margin, y - 14);
+  if (invoice.customer.additionalInfo?.length) {
+    invoice.customer.additionalInfo.forEach((info, i) => {
+      drawText(info, margin, y - 28 - (i * 14), { color: gray });
+    });
+  }
+
+  // Invoice Title
+  y -= 80;
+  drawText("RECHNUNG", margin, y, { font: helveticaBold, size: 24 });
+
+  // Invoice Details
+  y -= 40;
+  drawText(`Rechnungsnummer: ${invoice.invoiceNumber}`, margin, y);
+  drawText(`Rechnungsdatum: ${formatDate(invoice.invoiceDate)}`, margin, y - 14);
+  drawText(`Leistungsdatum: ${formatDate(invoice.serviceDate)}`, margin, y - 28);
+
+  // Table Header
+  y -= 70;
+  const colPositions = {
+    description: margin,
+    quantity: 300,
+    unit: 350,
+    unitPrice: 410,
+    total: 480,
+  };
+
+  drawText("Beschreibung", colPositions.description, y, { font: helveticaBold });
+  drawText("Menge", colPositions.quantity, y, { font: helveticaBold });
+  drawText("Einheit", colPositions.unit, y, { font: helveticaBold });
+  drawText("Preis", colPositions.unitPrice, y, { font: helveticaBold });
+  drawText("Gesamt", colPositions.total, y, { font: helveticaBold });
+
+  // Separator line
+  y -= 5;
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: width - margin, y },
+    thickness: 0.5,
+    color: black,
+  });
+
+  // Table Rows
+  y -= 20;
+  let netTotal = 0;
+
+  for (const item of invoice.items) {
+    const itemTotal = calculateItemTotal(item);
+    netTotal += itemTotal;
+
+    // Truncate long descriptions
+    let description = item.description;
+    const maxDescWidth = 240;
+    while (helvetica.widthOfTextAtSize(description, 10) > maxDescWidth && description.length > 0) {
+      description = description.slice(0, -1);
+    }
+    if (description !== item.description) {
+      description = description.slice(0, -3) + "...";
+    }
+
+    drawText(description, colPositions.description, y);
+    drawText(item.quantity.toString(), colPositions.quantity, y);
+    drawText(item.unit, colPositions.unit, y);
+    drawText(formatCurrency(item.unitPrice), colPositions.unitPrice, y);
+    drawText(formatCurrency(itemTotal), colPositions.total, y);
+
+    y -= 20;
+  }
+
+  // Separator line before totals
+  y -= 10;
+  page.drawLine({
+    start: { x: 350, y },
+    end: { x: width - margin, y },
+    thickness: 0.5,
+    color: black,
+  });
+
+  // Totals
+  y -= 20;
+  const taxAmount = netTotal * (invoice.taxRate / 100);
+  const grossTotal = netTotal + taxAmount;
+
+  drawText("Nettobetrag:", 350, y);
+  drawText(formatCurrency(netTotal), colPositions.total, y);
+
+  y -= 18;
+  drawText(`MwSt. (${invoice.taxRate}%):`, 350, y);
+  drawText(formatCurrency(taxAmount), colPositions.total, y);
+
+  y -= 10;
+  page.drawLine({
+    start: { x: 350, y },
+    end: { x: width - margin, y },
+    thickness: 0.5,
+    color: black,
+  });
+
+  y -= 15;
+  drawText("Gesamtbetrag:", 350, y, { font: helveticaBold });
+  drawText(formatCurrency(grossTotal), colPositions.total, y, { font: helveticaBold });
+
+  // Bank Details
+  if (invoice.bankDetails) {
+    y -= 50;
+    drawText("Bankverbindung:", margin, y, { font: helveticaBold });
+    y -= 14;
+    drawText(`IBAN: ${invoice.bankDetails.iban}`, margin, y);
+    y -= 14;
+    drawText(`Bank: ${invoice.bankDetails.bankName}`, margin, y);
+  }
+
+  // Note
+  if (invoice.note) {
+    y -= 40;
+    drawText(invoice.note, margin, y, { color: gray });
+  }
+
+  // Footer
+  const footerText = `${invoice.seller.name} | ${invoice.seller.address}`;
+  const footerWidth = helvetica.widthOfTextAtSize(footerText, 8);
+  page.drawText(footerText, {
+    x: (width - footerWidth) / 2,
+    y: margin,
+    font: helvetica,
+    size: 8,
+    color: gray,
+  });
+
+  // Set document metadata
+  pdfDoc.setTitle(`Rechnung ${invoice.invoiceNumber}`);
+  pdfDoc.setAuthor(invoice.seller.name);
+  pdfDoc.setCreationDate(new Date());
+
+  return pdfDoc.save();
+}
