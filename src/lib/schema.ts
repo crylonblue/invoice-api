@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const SellerSchema = z.object({
   name: z.string().min(1, "Seller name is required"),
+  subHeadline: z.string().optional(),
   address: z.string().min(1, "Seller address is required"),
   taxNumber: z.string().optional(),
   vatId: z.string().optional(),

@@ -57,6 +57,7 @@ Health Check Endpunkt.
 
   "seller": {
     "name": "Socy GmbH",
+    "subHeadline": "Ihr Partner für Seniorenbetreuung",
     "address": "Musterstraße 1, 80331 München",
     "taxNumber": "123/456/78901",
     "vatId": "DE123456789"
@@ -102,6 +103,7 @@ Health Check Endpunkt.
 |------|--------------|
 | `note` | Notiz am Ende der Rechnung |
 | `logoUrl` | URL zu einem Logo (PNG oder JPG). Wird oben links angezeigt. |
+| `seller.subHeadline` | Unterzeile unter dem Verkäufernamen (nicht fett) |
 | `seller.taxNumber` | Steuernummer |
 | `seller.vatId` | USt-IdNr. |
 | `customer.additionalInfo` | Array mit zusätzlichen Kundeninformationen (z.B. Versicherungsnummer) |
@@ -121,6 +123,7 @@ curl -X POST http://localhost:3000/api/invoice \
     "serviceDate": "2025-11-30",
     "seller": {
       "name": "Socy GmbH",
+      "subHeadline": "Ihr Partner für Seniorenbetreuung",
       "address": "Musterstraße 1, 80331 München",
       "taxNumber": "123/456/78901",
       "vatId": "DE123456789"
@@ -167,6 +170,7 @@ const invoiceData = {
   serviceDate: "2025-11-30",
   seller: {
     name: "Socy GmbH",
+    subHeadline: "Ihr Partner für Seniorenbetreuung",
     address: "Musterstraße 1, 80331 München",
     taxNumber: "123/456/78901",
     vatId: "DE123456789"

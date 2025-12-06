@@ -97,8 +97,14 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
 
   // Seller Info (top right) - always at fixed position from top
   const sellerY = height - margin;
+  
+  // Seller name (bold)
+  const sellerNameWidth = helveticaBold.widthOfTextAtSize(invoice.seller.name, 10);
+  drawText(invoice.seller.name, width - margin - sellerNameWidth, sellerY, { font: helveticaBold });
+  
+  // Build remaining seller lines (not bold)
   const sellerLines = [
-    invoice.seller.name,
+    invoice.seller.subHeadline,
     invoice.seller.address,
     invoice.seller.taxNumber ? `Steuernummer: ${invoice.seller.taxNumber}` : null,
     invoice.seller.vatId ? `USt-IdNr.: ${invoice.seller.vatId}` : null,
@@ -106,7 +112,7 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
 
   sellerLines.forEach((line, i) => {
     const textWidth = helvetica.widthOfTextAtSize(line, 10);
-    drawText(line, width - margin - textWidth, sellerY - (i * 14));
+    drawText(line, width - margin - textWidth, sellerY - ((i + 1) * 14));
   });
 
   // Customer Info (left side)
