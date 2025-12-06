@@ -1,16 +1,25 @@
 import { z } from "zod";
 
+export const AddressSchema = z.object({
+  street: z.string().min(1, "Street is required"),
+  streetNumber: z.string().min(1, "Street number is required"),
+  postalCode: z.string().min(1, "Postal code is required"),
+  city: z.string().min(1, "City is required"),
+});
+
 export const SellerSchema = z.object({
   name: z.string().min(1, "Seller name is required"),
   subHeadline: z.string().optional(),
-  address: z.string().min(1, "Seller address is required"),
+  address: AddressSchema,
+  phoneNumber: z.string().optional(),
   taxNumber: z.string().optional(),
   vatId: z.string().optional(),
 });
 
 export const CustomerSchema = z.object({
   name: z.string().min(1, "Customer name is required"),
-  address: z.string().min(1, "Customer address is required"),
+  address: AddressSchema,
+  phoneNumber: z.string().optional(),
   additionalInfo: z.array(z.string()).optional(),
 });
 
@@ -44,3 +53,4 @@ export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 export type Seller = z.infer<typeof SellerSchema>;
 export type Customer = z.infer<typeof CustomerSchema>;
 export type BankDetails = z.infer<typeof BankDetailsSchema>;
+export type Address = z.infer<typeof AddressSchema>;

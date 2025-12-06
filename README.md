@@ -58,14 +58,26 @@ Health Check Endpunkt.
   "seller": {
     "name": "Socy GmbH",
     "subHeadline": "Ihr Partner für Seniorenbetreuung",
-    "address": "Musterstraße 1, 80331 München",
+    "address": {
+      "street": "Musterstraße",
+      "streetNumber": "1",
+      "postalCode": "80331",
+      "city": "München"
+    },
+    "phoneNumber": "+49 89 12345678",
     "taxNumber": "123/456/78901",
     "vatId": "DE123456789"
   },
 
   "customer": {
     "name": "Inge Knaz",
-    "address": "Hauptstraße 12, 20537 Hamburg",
+    "address": {
+      "street": "Hauptstraße",
+      "streetNumber": "12",
+      "postalCode": "20537",
+      "city": "Hamburg"
+    },
+    "phoneNumber": "+49 40 87654321",
     "additionalInfo": [
       "Versicherungsnummer: 1145123",
       "Kundennummer: K-2024-001"
@@ -97,6 +109,17 @@ Health Check Endpunkt.
 }
 ```
 
+### Adress-Struktur
+
+Die Adresse für Verkäufer und Kunde ist ein Objekt mit folgenden Pflichtfeldern:
+
+| Feld | Beschreibung |
+|------|--------------|
+| `address.street` | Straßenname |
+| `address.streetNumber` | Hausnummer |
+| `address.postalCode` | Postleitzahl |
+| `address.city` | Stadt |
+
 ### Optionale Felder
 
 | Feld | Beschreibung |
@@ -104,11 +127,12 @@ Health Check Endpunkt.
 | `note` | Notiz am Ende der Rechnung |
 | `logoUrl` | URL zu einem Logo (PNG oder JPG). Wird oben links angezeigt. |
 | `seller.subHeadline` | Unterzeile unter dem Verkäufernamen (nicht fett) |
+| `seller.phoneNumber` | Telefonnummer des Verkäufers (wird im Footer angezeigt) |
 | `seller.taxNumber` | Steuernummer |
 | `seller.vatId` | USt-IdNr. |
+| `customer.phoneNumber` | Telefonnummer des Kunden |
 | `customer.additionalInfo` | Array mit zusätzlichen Kundeninformationen (z.B. Versicherungsnummer) |
-| `bankDetails.iban` | IBAN für die Bankverbindung |
-| `bankDetails.bankName` | Name der Bank |
+| `bankDetails` | Bankverbindung (Objekt mit `iban` und `bankName`) |
 
 ## Beispiel-Requests
 
@@ -124,13 +148,24 @@ curl -X POST http://localhost:3000/api/invoice \
     "seller": {
       "name": "Socy GmbH",
       "subHeadline": "Ihr Partner für Seniorenbetreuung",
-      "address": "Musterstraße 1, 80331 München",
+      "address": {
+        "street": "Musterstraße",
+        "streetNumber": "1",
+        "postalCode": "80331",
+        "city": "München"
+      },
+      "phoneNumber": "+49 89 12345678",
       "taxNumber": "123/456/78901",
       "vatId": "DE123456789"
     },
     "customer": {
       "name": "Inge Knaz",
-      "address": "Hauptstraße 12, 20537 Hamburg",
+      "address": {
+        "street": "Hauptstraße",
+        "streetNumber": "12",
+        "postalCode": "20537",
+        "city": "Hamburg"
+      },
       "additionalInfo": [
         "Versicherungsnummer: 1145123",
         "Kundennummer: K-2024-001"
@@ -171,13 +206,24 @@ const invoiceData = {
   seller: {
     name: "Socy GmbH",
     subHeadline: "Ihr Partner für Seniorenbetreuung",
-    address: "Musterstraße 1, 80331 München",
+    address: {
+      street: "Musterstraße",
+      streetNumber: "1",
+      postalCode: "80331",
+      city: "München"
+    },
+    phoneNumber: "+49 89 12345678",
     taxNumber: "123/456/78901",
     vatId: "DE123456789"
   },
   customer: {
     name: "Inge Knaz",
-    address: "Hauptstraße 12, 20537 Hamburg",
+    address: {
+      street: "Hauptstraße",
+      streetNumber: "12",
+      postalCode: "20537",
+      city: "Hamburg"
+    },
     additionalInfo: [
       "Versicherungsnummer: 1145123",
       "Kundennummer: K-2024-001"
@@ -251,7 +297,7 @@ Bei ungültigen Daten gibt die API einen 400-Fehler zurück:
 
 - [Next.js 15](https://nextjs.org/) (App Router)
 - [Zod](https://zod.dev/) (Validierung)
-- [PDFKit](https://pdfkit.org/) (PDF-Generierung)
+- [pdf-lib](https://pdf-lib.js.org/) (PDF-Generierung)
 - [Vercel](https://vercel.com/) (Hosting)
 
 ## Lizenz

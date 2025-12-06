@@ -1,5 +1,12 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import type { Invoice, InvoiceItem } from "./schema";
+import type { Invoice, InvoiceItem, Address } from "./schema";
+
+function formatAddress(address: Address): { streetLine: string; cityLine: string } {
+  return {
+    streetLine: `${address.street} ${address.streetNumber}`,
+    cityLine: `${address.postalCode} ${address.city}`,
+  };
+}
 
 async function fetchImageAsBytes(url: string): Promise<{ bytes: Uint8Array; type: "png" | "jpg" } | null> {
   try {
@@ -103,9 +110,11 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   drawText(invoice.seller.name, width - margin - sellerNameWidth, sellerY, { font: helveticaBold });
   
   // Build remaining seller lines (not bold)
+  const sellerAddress = formatAddress(invoice.seller.address);
   const sellerLines = [
     invoice.seller.subHeadline,
-    invoice.seller.address,
+    sellerAddress.streetLine,
+    sellerAddress.cityLine,
     invoice.seller.taxNumber ? `Steuernummer: ${invoice.seller.taxNumber}` : null,
     invoice.seller.vatId ? `USt-IdNr.: ${invoice.seller.vatId}` : null,
   ].filter(Boolean) as string[];
@@ -119,22 +128,28 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   y = height - 200;
   drawText(invoice.customer.name, margin, y);
   
-  // Split address by newlines to support multi-line addresses (street on one line, postal code + city on next)
-  const addressLines = invoice.customer.address.split('\n');
-  addressLines.forEach((line, i) => {
-    drawText(line, margin, y - 14 - (i * 14));
-  });
+  // Address on two lines: street + number, then postal code + city
+  const customerAddress = formatAddress(invoice.customer.address);
+  drawText(customerAddress.streetLine, margin, y - 14);
+  drawText(customerAddress.cityLine, margin, y - 28);
+  
+  let customerLineOffset = 42; // After name + 2 address lines
+  
+  // Phone number (if provided)
+  if (invoice.customer.phoneNumber) {
+    drawText(`Tel.: ${invoice.customer.phoneNumber}`, margin, y - customerLineOffset);
+    customerLineOffset += 14;
+  }
   
   const additionalInfoCount = invoice.customer.additionalInfo?.length ?? 0;
-  const addressLineCount = addressLines.length;
   if (additionalInfoCount > 0) {
     invoice.customer.additionalInfo!.forEach((info, i) => {
-      drawText(info, margin, y - 14 - (addressLineCount * 14) - (i * 14), { color: gray });
+      drawText(info, margin, y - customerLineOffset - (i * 14), { color: gray });
     });
   }
 
-  // Invoice Title - adjust position based on address lines and additionalInfo lines
-  const customerSectionHeight = 14 + (addressLineCount * 14) + (additionalInfoCount * 14) + 20;
+  // Invoice Title - adjust position based on customer info lines
+  const customerSectionHeight = customerLineOffset + (additionalInfoCount * 14) + 6;
   y -= customerSectionHeight;
   drawText("RECHNUNG", margin, y, { font: helveticaBold, size: 24 });
 
@@ -246,7 +261,12 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   }
 
   // Footer
-  const footerText = `${invoice.seller.name} | ${invoice.seller.address}`;
+  const footerParts = [
+    invoice.seller.name,
+    `${sellerAddress.streetLine}, ${sellerAddress.cityLine}`,
+    invoice.seller.phoneNumber ? `Tel.: ${invoice.seller.phoneNumber}` : null,
+  ].filter(Boolean) as string[];
+  const footerText = footerParts.join(' | ');
   const footerWidth = helvetica.widthOfTextAtSize(footerText, 8);
   page.drawText(footerText, {
     x: (width - footerWidth) / 2,
