@@ -125,7 +125,7 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   });
 
   // Customer Info (left side)
-  y = height - 200;
+  y = height - 170;
   drawText(invoice.customer.name, margin, y);
   
   // Address on two lines: street + number, then postal code + city
