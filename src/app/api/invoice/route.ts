@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const pdfBuffer = await generateInvoicePDF(invoice);
     
     // Return PDF as binary response
-    return new Response(pdfBuffer, {
+    return new Response(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
