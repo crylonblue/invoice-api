@@ -5,6 +5,7 @@ export const AddressSchema = z.object({
   streetNumber: z.string().min(1, "Street number is required"),
   postalCode: z.string().min(1, "Postal code is required"),
   city: z.string().min(1, "City is required"),
+  country: z.string().length(2, "Country code must be ISO 3166-1 alpha-2 format (e.g., 'DE', 'FR')").default("DE"),
 });
 
 export const SellerSchema = z.object({
@@ -43,6 +44,7 @@ export const InvoiceSchema = z.object({
   customer: CustomerSchema,
   items: z.array(InvoiceItemSchema).min(1, "At least one item is required"),
   taxRate: z.number().min(0).max(100, "Tax rate must be between 0 and 100"),
+  currency: z.string().length(3, "Currency must be ISO 4217 format (e.g., 'EUR', 'USD')").default("EUR"),
   note: z.string().optional(),
   logoUrl: z.string().url("Invalid logo URL").optional(),
   bankDetails: BankDetailsSchema.optional(),

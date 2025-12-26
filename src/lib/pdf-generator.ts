@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { Invoice, InvoiceItem, Address } from "./schema";
+import { embedZugferdIntoPDF } from "./zugferd-generator";
 
 function formatAddress(address: Address): { streetLine: string; cityLine: string } {
   return {
@@ -280,6 +281,20 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   pdfDoc.setTitle(`Rechnung ${invoice.invoiceNumber}`);
   pdfDoc.setAuthor(invoice.seller.name);
   pdfDoc.setCreationDate(new Date());
+  pdfDoc.setModificationDate(new Date());
+  pdfDoc.setCreator("Invoice API");
+  pdfDoc.setProducer("Invoice API");
 
-  return pdfDoc.save();
+  // Save the visual PDF first
+  // Use save with options to ensure fonts are embedded and structure is correct
+  // Note: pdf-lib doesn't create PDF/A-3b directly, but node-zugferd will convert it
+  const visualPdfBuffer = await pdfDoc.save({
+    useObjectStreams: false, // Disable object streams for better compatibility
+    addDefaultPage: false, // Don't add default page
+  });
+
+  // Embed ZUGFeRD XML into PDF and convert to PDF/A-3b compliant document
+  const zugferdPdfBuffer = await embedZugferdIntoPDF(invoice, visualPdfBuffer);
+
+  return zugferdPdfBuffer;
 }

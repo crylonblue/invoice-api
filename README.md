@@ -6,6 +6,8 @@ Eine einfache Serverless-API zur PDF-Rechnungsgenerierung mit Next.js, bereit f�
 
 - ✅ JSON → PDF Konvertierung
 - ✅ Zod-Validierung
+- ✅ **ZUGFeRD/Factur-X EN16931 Support** - Maschinenlesbare XML-Rechnungen
+- ✅ **PDF/A-3b konform** - Archivierungsfähige Dokumente
 - ✅ Vercel Serverless kompatibel
 - ✅ Keine Datenbank, keine Persistenz
 - ✅ Perfekt für Automationen (n8n, Zapier, Make)
@@ -28,11 +30,45 @@ vercel
 
 Oder verbinde dein GitHub Repository direkt mit Vercel.
 
-## API Endpunkt
+## API Endpunkte
 
 ### POST /api/invoice
 
-Generiert eine PDF-Rechnung aus dem übergebenen JSON.
+Generiert eine PDF-Rechnung mit eingebetteter ZUGFeRD-XML aus dem übergebenen JSON.
+
+**Request:**
+- Method: `POST`
+- Content-Type: `application/json`
+- Body: Invoice JSON (siehe Schema unten)
+
+**Response:**
+- Content-Type: `application/pdf`
+- Body: PDF Binary (mit eingebetteter ZUGFeRD-XML)
+
+### POST /api/xrechnung
+
+Generiert eine XRechnung/ZUGFeRD-XML-Datei aus dem übergebenen JSON (ohne PDF).
+
+**Request:**
+- Method: `POST`
+- Content-Type: `application/json`
+- Body: Invoice JSON (siehe Schema unten)
+
+**Response:**
+- Content-Type: `application/xml; charset=utf-8`
+- Body: XRechnung XML (EN16931-konform)
+
+**Verwendung:**
+```bash
+curl -X POST http://localhost:3000/api/xrechnung \
+  -H "Content-Type: application/json" \
+  -d @invoice.json \
+  --output xrechnung.xml
+```
+
+### GET /api/invoice & GET /api/xrechnung
+
+Health Check Endpunkte.
 
 **Request:**
 - Method: `POST`
@@ -298,7 +334,27 @@ Bei ungültigen Daten gibt die API einen 400-Fehler zurück:
 - [Next.js 15](https://nextjs.org/) (App Router)
 - [Zod](https://zod.dev/) (Validierung)
 - [pdf-lib](https://pdf-lib.js.org/) (PDF-Generierung)
+- [node-zugferd](https://www.npmjs.com/package/node-zugferd) (ZUGFeRD XML-Generierung & PDF/A-3b Konvertierung)
 - [Vercel](https://vercel.com/) (Hosting)
+
+## ZUGFeRD/XRechnung Support
+
+Die API unterstützt die Generierung von **XRechnung/ZUGFeRD**-konformen Rechnungen im **EN16931-Profil** (EU-Standard):
+
+### PDF mit eingebetteter XML (`/api/invoice`)
+- **Maschinenlesbare XML-Daten** eingebettet als Attachment
+- **PDF/A-3b Konvertierung** durch `node-zugferd` (reine JavaScript, Serverless-kompatibel)
+- **XMP-Metadaten** für PDF/A-Identifikation
+- **Eingebettete Schriftarten** für konsistente Darstellung
+
+### Reine XML-Datei (`/api/xrechnung`)
+- **XRechnung/ZUGFeRD XML** im EN16931-Format
+- **Serverless-kompatibel** - keine externen Dependencies
+- **Direkt verwendbar** für Rechnungsverarbeitungssysteme
+
+Die generierten XML-Dateien können von Rechnungsverarbeitungssystemen automatisch verarbeitet werden und entsprechen den deutschen XRechnung-Anforderungen.
+
+**Hinweis:** `node-zugferd` ist noch in der Beta-Phase. Es gibt bekannte Probleme mit XMP-Metadaten-Kodierung in einigen PDF-Validatoren. Die ZUGFeRD-XML-Daten sind jedoch korrekt generiert und können von Rechnungsverarbeitungssystemen gelesen werden.
 
 ## Lizenz
 
