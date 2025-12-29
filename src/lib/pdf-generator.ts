@@ -169,6 +169,10 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
     unitPrice: 410,
     total: 480,
   };
+  const colRightEdges = {
+    unitPrice: colPositions.total - 10, // Right edge of unitPrice column
+    total: width - margin, // Right edge of total column
+  };
 
   drawText("Beschreibung", colPositions.description, y, { font: helveticaBold });
   drawText("Menge", colPositions.quantity, y, { font: helveticaBold });
@@ -206,8 +210,14 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
     drawText(description, colPositions.description, y);
     drawText(item.quantity.toString(), colPositions.quantity, y);
     drawText(item.unit, colPositions.unit, y);
-    drawText(formatCurrency(item.unitPrice), colPositions.unitPrice, y);
-    drawText(formatCurrency(itemTotal), colPositions.total, y);
+    // Right-align unitPrice
+    const unitPriceText = formatCurrency(item.unitPrice);
+    const unitPriceWidth = helvetica.widthOfTextAtSize(unitPriceText, 10);
+    drawText(unitPriceText, colRightEdges.unitPrice - unitPriceWidth, y);
+    // Right-align unitTotal
+    const unitTotalText = formatCurrency(itemTotal);
+    const unitTotalWidth = helvetica.widthOfTextAtSize(unitTotalText, 10);
+    drawText(unitTotalText, colRightEdges.total - unitTotalWidth, y);
 
     y -= 20;
   }
@@ -227,11 +237,17 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   const grossTotal = netTotal + taxAmount;
 
   drawText("Nettobetrag:", 350, y);
-  drawText(formatCurrency(netTotal), colPositions.total, y);
+  // Right-align netTotal
+  const netTotalText = formatCurrency(netTotal);
+  const netTotalWidth = helvetica.widthOfTextAtSize(netTotalText, 10);
+  drawText(netTotalText, colRightEdges.total - netTotalWidth, y);
 
   y -= 18;
   drawText(`MwSt. (${invoice.taxRate}%):`, 350, y);
-  drawText(formatCurrency(taxAmount), colPositions.total, y);
+  // Right-align taxAmount
+  const taxAmountText = formatCurrency(taxAmount);
+  const taxAmountWidth = helvetica.widthOfTextAtSize(taxAmountText, 10);
+  drawText(taxAmountText, colRightEdges.total - taxAmountWidth, y);
 
   y -= 10;
   page.drawLine({
@@ -243,7 +259,10 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
 
   y -= 15;
   drawText("Gesamtbetrag:", 350, y, { font: helveticaBold });
-  drawText(formatCurrency(grossTotal), colPositions.total, y, { font: helveticaBold });
+  // Right-align grossTotal
+  const grossTotalText = formatCurrency(grossTotal);
+  const grossTotalWidth = helveticaBold.widthOfTextAtSize(grossTotalText, 10);
+  drawText(grossTotalText, colRightEdges.total - grossTotalWidth, y, { font: helveticaBold });
 
   // Bank Details
   if (invoice.bankDetails) {
