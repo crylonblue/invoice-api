@@ -144,6 +144,8 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   
   const additionalInfoCount = invoice.customer.additionalInfo?.length ?? 0;
   if (additionalInfoCount > 0) {
+    // Add spacing before additionalInfo (at least 2 lines = 28 pixels)
+    customerLineOffset += 28;
     invoice.customer.additionalInfo!.forEach((info, i) => {
       drawText(info, margin, y - customerLineOffset - (i * 14), { color: gray });
     });
