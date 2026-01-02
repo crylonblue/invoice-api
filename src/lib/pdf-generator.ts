@@ -52,6 +52,11 @@ function calculateItemTotal(item: InvoiceItem): number {
   return item.quantity * item.unitPrice;
 }
 
+// Sanitize text by removing newlines and other problematic characters for PDF rendering
+function sanitizeText(text: string): string {
+  return text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
@@ -92,9 +97,10 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
     }
   }
 
-  // Helper function to draw text
+  // Helper function to draw text (sanitizes text to remove newlines)
   const drawText = (text: string, x: number, yPos: number, options?: { font?: typeof helvetica; size?: number; color?: typeof black }) => {
-    page.drawText(text, {
+    const sanitized = sanitizeText(text);
+    page.drawText(sanitized, {
       x,
       y: yPos,
       font: options?.font ?? helvetica,
@@ -107,7 +113,7 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   const sellerY = height - margin;
   
   // Seller name (bold)
-  const sellerNameWidth = helveticaBold.widthOfTextAtSize(invoice.seller.name, 10);
+  const sellerNameWidth = helveticaBold.widthOfTextAtSize(sanitizeText(invoice.seller.name), 10);
   drawText(invoice.seller.name, width - margin - sellerNameWidth, sellerY, { font: helveticaBold });
   
   // Build remaining seller lines (not bold)
@@ -121,7 +127,8 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   ].filter(Boolean) as string[];
 
   sellerLines.forEach((line, i) => {
-    const textWidth = helvetica.widthOfTextAtSize(line, 10);
+    const sanitizedLine = sanitizeText(line);
+    const textWidth = helvetica.widthOfTextAtSize(sanitizedLine, 10);
     drawText(line, width - margin - textWidth, sellerY - ((i + 1) * 14));
   });
 
@@ -200,12 +207,12 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
     netTotal += itemTotal;
 
     // Truncate long descriptions
-    let description = item.description;
+    let description = sanitizeText(item.description);
     const maxDescWidth = 240;
     while (helvetica.widthOfTextAtSize(description, 10) > maxDescWidth && description.length > 0) {
       description = description.slice(0, -1);
     }
-    if (description !== item.description) {
+    if (description !== sanitizeText(item.description)) {
       description = description.slice(0, -3) + "...";
     }
 
@@ -214,11 +221,13 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
     drawText(item.unit, colPositions.unit, y);
     // Right-align unitPrice
     const unitPriceText = formatCurrency(item.unitPrice);
-    const unitPriceWidth = helvetica.widthOfTextAtSize(unitPriceText, 10);
+    const sanitizedUnitPriceText = sanitizeText(unitPriceText);
+    const unitPriceWidth = helvetica.widthOfTextAtSize(sanitizedUnitPriceText, 10);
     drawText(unitPriceText, colRightEdges.unitPrice - unitPriceWidth, y);
     // Right-align unitTotal
     const unitTotalText = formatCurrency(itemTotal);
-    const unitTotalWidth = helvetica.widthOfTextAtSize(unitTotalText, 10);
+    const sanitizedUnitTotalText = sanitizeText(unitTotalText);
+    const unitTotalWidth = helvetica.widthOfTextAtSize(sanitizedUnitTotalText, 10);
     drawText(unitTotalText, colRightEdges.total - unitTotalWidth, y);
 
     y -= 20;
@@ -241,14 +250,16 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   drawText("Nettobetrag:", 350, y);
   // Right-align netTotal
   const netTotalText = formatCurrency(netTotal);
-  const netTotalWidth = helvetica.widthOfTextAtSize(netTotalText, 10);
+  const sanitizedNetTotalText = sanitizeText(netTotalText);
+  const netTotalWidth = helvetica.widthOfTextAtSize(sanitizedNetTotalText, 10);
   drawText(netTotalText, colRightEdges.total - netTotalWidth, y);
 
   y -= 18;
   drawText(`MwSt. (${invoice.taxRate}%):`, 350, y);
   // Right-align taxAmount
   const taxAmountText = formatCurrency(taxAmount);
-  const taxAmountWidth = helvetica.widthOfTextAtSize(taxAmountText, 10);
+  const sanitizedTaxAmountText = sanitizeText(taxAmountText);
+  const taxAmountWidth = helvetica.widthOfTextAtSize(sanitizedTaxAmountText, 10);
   drawText(taxAmountText, colRightEdges.total - taxAmountWidth, y);
 
   y -= 10;
@@ -263,7 +274,8 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
   drawText("Gesamtbetrag:", 350, y, { font: helveticaBold });
   // Right-align grossTotal
   const grossTotalText = formatCurrency(grossTotal);
-  const grossTotalWidth = helveticaBold.widthOfTextAtSize(grossTotalText, 10);
+  const sanitizedGrossTotalText = sanitizeText(grossTotalText);
+  const grossTotalWidth = helveticaBold.widthOfTextAtSize(sanitizedGrossTotalText, 10);
   drawText(grossTotalText, colRightEdges.total - grossTotalWidth, y, { font: helveticaBold });
 
   // Bank Details
@@ -289,8 +301,9 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Uint8Array> 
     invoice.seller.phoneNumber ? `Tel.: ${invoice.seller.phoneNumber}` : null,
   ].filter(Boolean) as string[];
   const footerText = footerParts.join(' | ');
-  const footerWidth = helvetica.widthOfTextAtSize(footerText, 8);
-  page.drawText(footerText, {
+  const sanitizedFooterText = sanitizeText(footerText);
+  const footerWidth = helvetica.widthOfTextAtSize(sanitizedFooterText, 8);
+  page.drawText(sanitizedFooterText, {
     x: (width - footerWidth) / 2,
     y: margin,
     font: helvetica,
